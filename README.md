@@ -200,36 +200,57 @@ oasisic-openwrt/
 | `MINISIGN_KEY_ID` | 密钥 ID（hex） |
 | `MINISIGN_PASSWORD` | 私钥密码 |
 
-### 2. 定时构建
+### 2. 自动 vs 手动：分别编什么版本？
+
+两边 **不是两套完全不同的固件树**；差别几乎只在 **Nikki 用默认 Tag 还是你 pin 的 ref**。
+
+| 触发方式 | OpenWrt | Nikki | 说明 |
+|----------|---------|-------|------|
+| **定时自动**（每天北京时间 14:00） | 始终 `openwrt/openwrt` 的 **`releases/latest`** | **`OpenWrt-nikki` 的 `releases/latest` Tag** | `nikki_ref` 输入为空；再解析成完整 SHA，feeds 写 `url^完整SHA` |
+| **手动 · `nikki_ref` 留空** | 同上，**仍是 latest Tag** | 同上，**与定时相同** | 适合「策略不变，只想再跑一遍」 |
+| **手动 · 填写 `nikki_ref`** | 同上，**仍是 latest Tag** | **你填的 Tag / 分支 / Commit** | 例如 `f06b6b44`、`main`、`v1.26.1` |
+| **`force_build=true`** | 不改变选版 | 不改变选版 | 只强制编译，忽略「版本没变就跳过」 |
+
+补充（容易误解的点）：
+
+1. **OpenWrt 目前没有手动版本参数**：定时和手动都跟官方 **最新 Release Tag**；不能在 Actions UI 里改 OpenWrt 版本（除非以后加 input）。
+2. **Nikki 仅有新 Commit、尚未发新 Tag 时**：定时 **不会** 自动带上该 Commit；要吃到它，必须 **手动** 填 `nikki_ref`（并常勾 `force_build`）。
+3. **包管理器里显示的 Nikki 版本号** 仍可能是 Tag 名（如 1.26.1）；以 Release 正文的 **Nikki ref** 和产物里 `feeds.conf.default` 的 `^完整SHA` 为准。
+4. **是否真的开编**：还看仓库里是否有 `last_build_version`、是否与  
+   `{OpenWrtTag}_nikki-{完整SHA}` 相同；相同且未 force 则会跳过。
+
+### 3. 定时构建
 
 - 工作流：`openwrt-auto-build`
 - 时间：UTC 06:00 / **北京时间 14:00**
-- Nikki 默认：最新正式版 Release Tag
+- OpenWrt：最新正式版 Release Tag（`releases/latest`）
+- Nikki：最新正式版 Release Tag（`releases/latest`）
 - 仅有 Nikki 新 Commit、尚未发 Tag 时，**定时不会自动带上该 Commit**
 
-### 3. 手动构建（workflow_dispatch）
+### 4. 手动构建（workflow_dispatch）
 
 [Actions → openwrt-auto-build → Run workflow](https://github.com/Hawaiine/oasisic-openwrt/actions/workflows/openwrt-auto-build.yml)
 
 | 参数 | 类型 | 默认 | 含义 |
 |------|------|------|------|
 | `force_build` | 布尔勾选 | false | 跳过版本比对，强制全量编译 |
-| `nikki_ref` | 字符串 | 空 | 空=最新 Nikki Tag；可填 Tag / 分支 / 短或完整 SHA |
+| `nikki_ref` | 字符串 | 空 | 空=最新 Nikki Tag（与定时相同）；可填 Tag / 分支 / 短或完整 SHA |
 
 **`nikki_ref` 规范**
 
-- 留空 → 最新 Release Tag（如 `v1.26.1`）
+- 留空 → 最新 Release Tag（与定时相同，例如 `v1.26.1`）
 - Tag → `v1.26.1`
 - 分支 → `main`
 - Commit → `f06b6b44` 或 40 位完整 SHA（界面可短，CI 解析为完整 SHA 再写 feeds）
 
 **示例**
 
-| 目的 | force_build | nikki_ref |
-|------|-------------|-----------|
-| 钉死某 Commit 验证 | true | `f06b6b44` |
-| 跟踪 Nikki main | true | `main` |
-| 与定时相同策略手动重跑 | 按需 | 留空 |
+| 目的 | force_build | nikki_ref | 实际编到的版本（逻辑） |
+|------|-------------|-----------|------------------------|
+| 钉死某 Commit 验证 | true | `f06b6b44` | OpenWrt=latest Tag；Nikki=该 Commit |
+| 跟踪 Nikki main | true | `main` | OpenWrt=latest Tag；Nikki=main HEAD |
+| 与定时相同策略手动重跑 | 按需 | 留空 | OpenWrt + Nikki 均为各自 latest Tag |
+| 强制重编当前 latest（清缓存后等） | true | 留空 | 同上，但不因 last_build 相同而跳过 |
 
 成功后：
 
@@ -238,7 +259,7 @@ oasisic-openwrt/
 3. 正文含 root 随机密码、Nikki ref、内核版本  
 4. 可选出现/更新 `last_build_version`（`persist-last-build` 依赖 token 可推 main）
 
-### 4. PVE 导入
+### 5. PVE 导入
 
 ```bash
 # 下载 Release 中的 EFI 镜像并解压
