@@ -646,17 +646,42 @@ jobs:
 
       - name: 🖊️ 回写 last_build_version
         run: |
+          set -euo pipefail
           COMPOSITE="${{ needs.check-upstream.outputs.owrt_version }}_nikki-${{ needs.check-upstream.outputs.nikki_sha }}"
-          echo "$COMPOSITE" > "${{ env.LAST_VERSION_FILE }}"
+          FILE="${{ env.LAST_VERSION_FILE }}"
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "${{ env.LAST_VERSION_FILE }}"
+          # 构建可能很长；期间 main 若有新提交，直接 push 会被拒。先拉再写。
+          git fetch origin main
+          git checkout -B main origin/main
+
+          if [ -f "$FILE" ] && [ "$(cat "$FILE")" = "$COMPOSITE" ]; then
+            echo "⏭️  last_build_version 已是最新，跳过"
+            exit 0
+          fi
+
+          echo "$COMPOSITE" > "$FILE"
+          git add "$FILE"
           if git diff --cached --quiet; then
             echo "⏭️  last_build_version 无变化，跳过提交"
-          else
-            git commit -m "chore: 更新 last_build_version [skip ci]
-
-            Composite: $COMPOSITE"
-            git push
-            echo "✅ last_build_version 已回写至仓库"
+            exit 0
           fi
+
+          git commit -m "chore: 更新 last_build_version [skip ci]
+
+          Composite: $COMPOSITE"
+
+          # 再试一次 rebase + push，避免提交瞬间竞态
+          n=0
+          until [ $n -ge 3 ]; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              echo "✅ last_build_version 已回写至仓库"
+              exit 0
+            fi
+            n=$((n+1))
+            echo "⏳ push 冲突，第 $n 次重试..."
+            sleep 3
+          done
+          echo "❌ last_build_version 回写失败（push 被拒）" >&2
+          exit 1
