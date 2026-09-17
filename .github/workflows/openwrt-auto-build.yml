@@ -24,7 +24,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   OWRT_REPO: openwrt/openwrt
@@ -626,6 +626,7 @@ jobs:
           RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/oasisic-${{ needs.check-upstream.outputs.owrt_ver_safe }}-nikki-${{ needs.build.outputs.nikki_short_sha }}
           BUILD_TIME: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')
         run: python3 scripts/notify-discord.py
+        continue-on-error: true
 
       - name: 🧹 清理临时文件
         if: always()
