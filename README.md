@@ -2,12 +2,50 @@
 
 > 全自动 OpenWrt 固件构建 · 源码编译 Nikki · PVE 开箱即用
 
-[![build](https://github.com/Hawaiine/oasisic-openwrt/actions/workflows/openwrt-auto-build.yml/badge.svg)](https://github.com/Hawaiine/oasisic-openwrt/actions/workflows/openwrt-auto-build.yml)
+[![build](https://github.com/Hawaiine/Oasisic-Openwrt/actions/workflows/openwrt-auto-build.yml/badge.svg)](https://github.com/Hawaiine/Oasisic-Openwrt/actions/workflows/openwrt-auto-build.yml)
+[![release](https://img.shields.io/github/v/release/Hawaiine/Oasisic-Openwrt?logo=github&label=release)](https://github.com/Hawaiine/Oasisic-Openwrt/releases)
+[![last commit](https://img.shields.io/github/last-commit/Hawaiine/Oasisic-Openwrt/main?logo=git&label=last%20commit)](https://github.com/Hawaiine/Oasisic-Openwrt/commits/main)
 [![OpenWrt](https://img.shields.io/github/v/release/openwrt/openwrt?logo=openwrt&label=OpenWrt&color=00b4ff)](https://openwrt.org)
 [![Nikki](https://img.shields.io/github/v/release/nikkinikki-org/OpenWrt-nikki?logo=go&label=Nikki&color=ff6600)](https://github.com/nikkinikki-org/OpenWrt-nikki)
-[![PVE](https://img.shields.io/badge/PVE-ready-570c2e?logo=proxmox)](https://proxmox.com)
+[![PVE](https://img.shields.io/badge/PVE-ready-570c2e?logo=proxmox)](https://www.proxmox.com)
 [![License](https://img.shields.io/badge/license-GPLv2-blue)](LICENSE)
 [![Platform](https://img.shields.io/badge/x86__64-squashfs-ff69b4)](https://downloads.openwrt.org/releases/targets/x86/64/)
+
+---
+
+## 📖 目录
+
+- [📖 目录](#-目录)
+- [⚡ 快速上手](#-快速上手)
+- [📋 项目简介](#-项目简介)
+- [✨ 特性一览](#-特性一览)
+- [🧭 设置向导（首次启动）](#-设置向导首次启动)
+- [🏗️ 编译流水线](#️-编译流水线)
+- [📂 项目结构](#-项目结构)
+- [🚦 构建策略：自动 vs 手动](#-构建策略自动-vs-手动)
+- [🚀 手动构建（workflow_dispatch）](#-手动构建workflow_dispatch)
+- [🔑 Secrets 与签名](#-secrets-与签名)
+- [🖥️ PVE 导入](#️-pve-导入)
+- [🛡️ 安全与源](#️-安全与源)
+- [❓ 常见问题（FAQ）](#-常见问题faq)
+- [🔧 排错](#-排错)
+- [📌 相关项目](#-相关项目)
+- [📜 版本与发布](#-版本与发布)
+- [📜 许可证](#-许可证)
+
+---
+
+## ⚡ 快速上手
+
+**只想用固件 —— 3 步**
+
+1. **下载**：到 [Releases](https://github.com/Hawaiine/Oasisic-Openwrt/releases) 取最新的 `*-squashfs-combined-efi.img.gz`（PVE / UEFI 推荐；传统 BIOS 用 `*-squashfs-combined.img.gz`）
+2. **导入 PVE**：复制 [🖥️ PVE 导入](#️-pve-导入) 里的命令块执行即可
+3. **首次配置**：首次启动是 DHCP 客户端 —— 到主路由的 DHCP 列表找主机名 `Oasisic-OpenWrt`，浏览器打开它的 IP，按向导设置静态 IP 和管理员密码；root 密码以对应 Release 正文为准
+
+**想自己编译**：Actions → `openwrt-auto-build` → **Run workflow**；参数与示例见 [🚀 手动构建](#-手动构建workflow_dispatch)。
+
+⏱ 耗时参考：冷构建约 60–100 分钟；命中缓存约 30–50 分钟（GitHub 免费 runner）。
 
 ---
 
@@ -19,7 +57,7 @@
 |---|---|
 | 🏝️ **项目** | Oasisic OpenWrt |
 | 📡 **流水线** | check-upstream → build → qemu-smoke-test → release → persist-last-build |
-| 🎯 **上游跟踪** | OpenWrt 最新 Release Tag；Nikki 默认同最新 Release Tag，手动可覆盖为分支/Commit |
+| 🎯 **上游跟踪** | OpenWrt 最新 Release Tag；Nikki 默认同最新 Release Tag，手动可覆盖为分支 / Commit |
 | ⏱ **耗时参考** | 冷构建约 60–100 分钟；缓存命中约 30–50 分钟（GitHub 免费 runner） |
 | 📦 **产物** | squashfs 镜像 · ISO · sha256sums · minisig · feeds.conf.default · manifest |
 
@@ -34,7 +72,7 @@
 | 📌 Nikki 钉定 | 解析 Tag/分支/短 SHA → 完整 40 位 SHA；feeds 使用 `url^SHA`（Commit）或 `url;Tag/分支` |
 | 🏷️ Release 命名 | `oasisic-{OpenWrt版本}-nikki-{短SHA}`，避免同 OpenWrt 版互相覆盖 |
 | 🧪 QEMU 门禁 | 启动固件，检查 LuCI HTTP 与 JS 资源 |
-| 🔏 minisign | 对 `sha256sums` 签名，Release 附带 `sha256sums.minisig` |
+| 🔏 minisign | 对 `sha256sums` 签名，Release 附带 `sha256sums.minisig`（公钥见 `.github/minisign.pub`） |
 | 🖥️ PVE | qemu-ga + virtio 驱动；默认 LAN DHCP，无硬编码局域网 IP |
 | 🧭 首次向导 | 纯 HTML/CSS/JS + CGI；完成后自禁用 |
 | 🈴 中文 LuCI | `99-custom` 注册 `luci.languages.zh_cn`（规避 openwrt#16987） |
@@ -159,7 +197,7 @@ Tag/分支调试仍可用 `;v1.26.1` / `;main`。
 ## 📂 项目结构
 
 ```
-oasisic-openwrt/
+Oasisic-Openwrt/
 ├── .github/
 │   ├── workflows/
 │   │   ├── openwrt-auto-build.yml   # 主构建流水线
@@ -189,24 +227,13 @@ oasisic-openwrt/
 
 ---
 
-## 🚀 使用说明
+## 🚦 构建策略：自动 vs 手动
 
-### 1. Secrets
-
-| Secret | 用途 |
-|--------|------|
-| `DISCORD_BOT_TOKEN` | 发布通知（可选，缺则通知步骤失败但不影响你本地使用固件逻辑） |
-| `MINISIGN_SECRET_KEY` | 签名私钥（hex） |
-| `MINISIGN_KEY_ID` | 密钥 ID（hex） |
-| `MINISIGN_PASSWORD` | 私钥密码 |
-
-### 2. 自动 vs 手动：分别编什么版本？
-
-两边 **不是两套完全不同的固件树**；差别几乎只在 **Nikki 用默认 Tag 还是你 pin 的 ref**。
+自动与手动**不是两套固件树**；差别几乎只在 **Nikki 用默认 Tag 还是你 pin 的 ref**。
 
 | 触发方式 | OpenWrt | Nikki | 说明 |
 |----------|---------|-------|------|
-| **定时自动**（每天北京时间 14:00） | 始终 `openwrt/openwrt` 的 **`releases/latest`** | **`OpenWrt-nikki` 的 `releases/latest` Tag** | `nikki_ref` 输入为空；再解析成完整 SHA，feeds 写 `url^完整SHA` |
+| **定时自动**（每天北京时间 14:00 / UTC 06:00） | 始终 `openwrt/openwrt` 的 **`releases/latest`** | **`OpenWrt-nikki` 的 `releases/latest` Tag** | `nikki_ref` 输入为空；再解析成完整 SHA，feeds 写 `url^完整SHA` |
 | **手动 · `nikki_ref` 留空** | 同上，**仍是 latest Tag** | 同上，**与定时相同** | 适合「策略不变，只想再跑一遍」 |
 | **手动 · 填写 `nikki_ref`** | 同上，**仍是 latest Tag** | **你填的 Tag / 分支 / Commit** | 例如 `f06b6b44`、`main`、`v1.26.1` |
 | **`force_build=true`** | 不改变选版 | 不改变选版 | 只强制编译，忽略「版本没变就跳过」 |
@@ -219,22 +246,16 @@ oasisic-openwrt/
 4. **是否真的开编**：还看仓库里是否有 `last_build_version`、是否与  
    `{OpenWrtTag}_nikki-{完整SHA}` 相同；相同且未 force 则会跳过。
 
-### 3. 定时构建
+---
 
-- 工作流：`openwrt-auto-build`
-- 时间：UTC 06:00 / **北京时间 14:00**
-- OpenWrt：最新正式版 Release Tag（`releases/latest`）
-- Nikki：最新正式版 Release Tag（`releases/latest`）
-- 仅有 Nikki 新 Commit、尚未发 Tag 时，**定时不会自动带上该 Commit**
+## 🚀 手动构建（workflow_dispatch）
 
-### 4. 手动构建（workflow_dispatch）
-
-[Actions → openwrt-auto-build → Run workflow](https://github.com/Hawaiine/oasisic-openwrt/actions/workflows/openwrt-auto-build.yml)
+入口：[Actions → openwrt-auto-build → Run workflow](https://github.com/Hawaiine/Oasisic-Openwrt/actions/workflows/openwrt-auto-build.yml)
 
 | 参数 | 类型 | 默认 | 含义 |
 |------|------|------|------|
 | `force_build` | 布尔勾选 | false | 跳过版本比对，强制全量编译 |
-| `nikki_ref` | 字符串 | 空 | 空=最新 Nikki Tag（与定时相同）；可填 Tag / 分支 / 短或完整 SHA |
+| `nikki_ref` | 字符串 | 空 | 空 = 最新 Nikki Tag（与定时相同）；可填 Tag / 分支 / 短或完整 SHA |
 
 **`nikki_ref` 规范**
 
@@ -247,19 +268,34 @@ oasisic-openwrt/
 
 | 目的 | force_build | nikki_ref | 实际编到的版本（逻辑） |
 |------|-------------|-----------|------------------------|
-| 钉死某 Commit 验证 | true | `f06b6b44` | OpenWrt=latest Tag；Nikki=该 Commit |
-| 跟踪 Nikki main | true | `main` | OpenWrt=latest Tag；Nikki=main HEAD |
+| 钉死某 Commit 验证 | true | `f06b6b44` | OpenWrt = latest Tag；Nikki = 该 Commit |
+| 跟踪 Nikki main | true | `main` | OpenWrt = latest Tag；Nikki = main HEAD |
 | 与定时相同策略手动重跑 | 按需 | 留空 | OpenWrt + Nikki 均为各自 latest Tag |
 | 强制重编当前 latest（清缓存后等） | true | 留空 | 同上，但不因 last_build 相同而跳过 |
 
 成功后：
 
-1. [Releases](https://github.com/Hawaiine/oasisic-openwrt/releases) 下载产物  
+1. [Releases](https://github.com/Hawaiine/Oasisic-Openwrt/releases) 下载产物  
 2. 标签形如 `oasisic-25.12.5-nikki-f06b6b4`  
 3. 正文含 root 随机密码、Nikki ref、内核版本  
 4. 可选出现/更新 `last_build_version`（`persist-last-build` 依赖 token 可推 main）
 
-### 5. PVE 导入
+---
+
+## 🔑 Secrets 与签名
+
+| Secret | 用途 |
+|--------|------|
+| `DISCORD_BOT_TOKEN` | 发布通知（可选，缺则通知步骤失败但不影响你本地使用固件逻辑） |
+| `MINISIGN_SECRET_KEY` | 签名私钥（hex） |
+| `MINISIGN_KEY_ID` | 密钥 ID（hex） |
+| `MINISIGN_PASSWORD` | 私钥密码 |
+
+签名文件 `sha256sums.minisig` 随 Release 一并发布；公钥见 [`.github/minisign.pub`](.github/minisign.pub)。
+
+---
+
+## 🖥️ PVE 导入
 
 ```bash
 # 下载 Release 中的 EFI 镜像并解压
@@ -277,6 +313,8 @@ qm start 100
 
 首次启动为 **DHCP 客户端**。到主路由 DHCP 列表查找主机名 `Oasisic-OpenWrt`，浏览器打开 IP 进入设置向导。root 密码以对应 Release 正文为准。
 
+> 没有 PVE？ISO 镜像可直接挂载到虚拟机或写入 U 盘启动，步骤同理。
+
 ---
 
 ## 🛡️ 安全与源
@@ -288,6 +326,40 @@ qm start 100
 | 包列表 | `scripts/gen-config.sh` 显式声明 |
 | 密码 | 每次 CI 构建生成随机 root 哈希；向导可再改 |
 | 签名 | minisign；公钥见 `.github/minisign.pub` |
+
+---
+
+## ❓ 常见问题（FAQ）
+
+**1. 多久构建一次？会不会重复编译？**  
+每天北京时间 14:00 检测一次上游。合成键 `{OpenWrtTag}_nikki-{完整SHA}` 与仓库里的 `last_build_version` 相同、且未勾 `force_build` 时直接跳过。
+
+**2. 上游发了新版，为什么没有新 Release？**  
+三种常见情况：① Nikki 只推了新 commit、还没打新 Tag —— 定时只跟 Tag，需手动填 `nikki_ref`；② 判定为「无变化」（去重生效）；③ 构建真的失败 —— 去 Actions 看那次运行的日志。
+
+**3. 一次构建要多久？**  
+冷构建 60–100 分钟；命中缓存 30–50 分钟（GitHub 免费 runner）。含编译、QEMU 烟雾测试与发布。
+
+**4. 想马上吃到 Nikki 的新 commit（还没发 tag）怎么办？**  
+手动运行并填 `nikki_ref`（`main` 或短 SHA）+ 勾 `force_build`。定时任务不会自动带上未发 Tag 的 commit。
+
+**5. 怎么增删预装包？**  
+改 `scripts/gen-config.sh`（包列表显式声明）后提交；下次构建生效。`check-docs-consistency.sh` 会在构建时校验 README 声称的包与配置是否一致。
+
+**6. root 密码是什么？能改吗？**  
+每次构建随机生成（SHA-512），写在对应 Release 正文里；仓库中的 `files/etc/shadow` 只是占位，构建时被替换。首次向导也可再改。
+
+**7. 默认网络配置是什么样的？**  
+首次启动为 DHCP 客户端，无硬编码局域网 IP；IPv6 相关（RA / DHCPv6 / NDP）默认关闭；LuCI 诊断地址默认 DNSPod `119.29.29.29`。
+
+**8. 怎么彻底重建（不靠缓存）？**  
+删除相关 Release/tag → 清空 Actions caches → 删除 `last_build_version` → 手动运行并勾 `force_build`。冷构建更慢，但结果更干净。
+
+**9. 支持其它架构吗？**  
+目前只出 x86/64（squashfs-combined EFI/BIOS + ISO），面向 PVE 与 x86 软路由；换架构需改 `gen-config.sh` 与产物路径。
+
+**10. 定时任务突然不跑了？**  
+大概率是「60 天无新提交 → `schedule` 工作流被 GitHub 自动停用」，处理见 [🔧 排错 → ⏰ 定时工作流被停用](#-定时工作流被停用60-天无新提交)。
 
 ---
 
@@ -325,13 +397,6 @@ GitHub 规则：**公开仓库在 60 天内没有仓库活动（没有新提交�
 > API 启用：`PUT /repos/{owner}/{repo}/actions/workflows/{id}/enable`（token 需 `actions: write`）。
 > 最省事的记法：**收到提醒邮件时顺手推一个空提交**，60 天计时即重置。
 
-### 时间参考（免费 runner，含 Nikki）
-
-| 场景 | 约耗时 |
-|------|--------|
-| 冷构建（无 cache） | 60–100 分钟 |
-| 缓存命中 | 30–50 分钟 |
-
 ---
 
 ## 📌 相关项目
@@ -340,14 +405,14 @@ GitHub 规则：**公开仓库在 60 天内没有仓库活动（没有新提交�
 |------|------|
 | [Oasisic-Icons](https://github.com/Hawaiine/Oasisic-Icons) | 代理图标 |
 | [mihomo-rules](https://github.com/Hawaiine/mihomo-rules) | mihomo 规则集 |
-| [iptv-sources](https://github.com/Hawaiine/iptv-sources) | IPTV 源聚合 |
+| [Oasisic-IPTV](https://github.com/Hawaiine/Oasisic-IPTV) | IPTV 源聚合 |
 | [moviepilot-category](https://github.com/Hawaiine/moviepilot-category) | MoviePilot 分类策略 |
 
 ---
 
 ## 📜 版本与发布
 
-- **以 [Releases](https://github.com/Hawaiine/oasisic-openwrt/releases) 为准**，不再维护易过期的手工版本表。  
+- **以 [Releases](https://github.com/Hawaiine/Oasisic-Openwrt/releases) 为准**，不再维护易过期的手工版本表。  
 - 标签格式：`oasisic-{OpenWrt版本号}-nikki-{短SHA}`。  
 - 工程变更看 `git log` / Actions；不在此逐条罗列构建编号。
 
