@@ -302,6 +302,28 @@ qm start 100
 | LuCI 转圈 / JS 异常 | 缺 ucode 或静态资源 | 配置中已含 ucode；看 QEMU 步骤日志 |
 | `persist-last-build` 失败 | 无法推 main | 检查 token/分支保护；去重会失效 |
 | 想强制全新构建 | 缓存或版本文件残留 | 清 Actions Cache；删除 `last_build_version`；`force_build=true` |
+| 定时不再触发 / 收到「will be disabled soon」邮件 | 仓库 60 天无新提交，`schedule` 工作流被自动停用 | 推一个提交 + Actions 里 Enable（见下节 ⏰） |
+
+### ⏰ 定时工作流被停用（60 天无新提交）
+
+GitHub 规则：**公开仓库在 60 天内没有仓库活动（没有新提交）时，所有 `schedule` 触发的工作流会被自动停用**。本仓库只在 `last_build_version` 变化时才产生提交，因此 **OpenWrt / Nikki 长期不发新版时会触发**（与是否有人打开 Actions 无关）。
+
+| 阶段 | 现象 |
+|------|------|
+| 停用前约 7 天 | 收到邮件 `[GitHub] The "openwrt-auto-build" workflow … will be disabled soon` |
+| 到期（最后一次提交后 60 天） | Actions 出现横幅 `This scheduled workflow is disabled because there hasn't been activity in this repository for at least 60 days`；定时构建与 `cleanup-failed-runs` 都不再运行 |
+
+**手动恢复（两步，缺一不可）**
+
+1. **先推一个提交** —— 这一步才是重置 60 天计时的关键。最省事是网页端编辑任意文件后提交；本地亦可：
+   ```bash
+   git commit --allow-empty -m "🫀 chore: 保活心跳" && git push
+   ```
+2. **再启用工作流** —— Actions → 左侧选 `openwrt-auto-build` → 右侧 **Enable workflow**；`cleanup-failed-runs` 同样要启用（两个一起被停）。
+
+> ⚠️ 只点 Enable 而不产生新提交，通常会被再次停用——停用条件只判断「仓库是否有活动」。
+> API 启用：`PUT /repos/{owner}/{repo}/actions/workflows/{id}/enable`（token 需 `actions: write`）。
+> 最省事的记法：**收到提醒邮件时顺手推一个空提交**，60 天计时即重置。
 
 ### 时间参考（免费 runner，含 Nikki）
 
